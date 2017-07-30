@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>BD Region/Country code checker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Ubuntu" rel="stylesheet"> 
+    <style>
+        *, *:after {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100%;
+            height: 100%;
+            background: #EEE;
+            font-family: 'Ubuntu', sans-serif;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            padding: 2em;
+        }
+
+        #header {
+            background: #233237;
+            margin-bottom: 2em;
+        }
+        .container {
+            width: 900px;
+            margin: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container > div {
+            width: 50%;
+            height: 100px;
+            text-align: center;
+        }
+        
+        #drop {
+            width: 100%;
+            height: 300px;
+            border: 5px dashed gray;
+            border-radius: 20px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2em 0;
+        }
+        #drop.hover {
+            border-color: black;
+        }
+
+        .green { color: #57BC90; }
+        .yellow { color: #F7B733; }
+        .red { color: #FC4A1A; }
+        .region-code {
+            font-size: 2em;
+            width: 100%;
+        }
+        #verdict {
+           width: 100%;
+           height: 300px;
+           font-size: 5em;
+           line-height: 300px;
+           vertical-align: middle;
+        }
+        #verdict-container {
+            width: 900px;
+            height: 300px;
+            margin: auto;
+            text-align: center;
+            line-height: 3em;
+            vertical-align: middle;
+        }
+        .hidden {
+            display: none !important;
+        }
+        #again-link {
+            margin-top: -5em;
+            cursor: pointer;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="header">
+        <h1>BD region/country code checker</h1>
+    </div>
+    <div class="container">
+        <div id="drop">
+            <div>
+                <p>Drop MovieObject.bdmv here, or click below to pick a file<p>
+                <input id="filein" type="file" onchange="processFile(this.files[0])"></input>
+            </div>
+        </div>
+    </div>
+    <div id="output" class="hidden">
+        <div id="verdict-container">
+            <h2 id="verdict"></h2>
+            <p id="again-link" onclick="reset()">Scan another file</p>
+        </div>
+        <div class="container">
+            <div>
+                <h3>Checked regions</h3>
+                <div id="region">
+                </div>
+            </div>
+            <div>
+                <h3>Checked country codes</h3>
+                <div id="country">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="faq">
+        
+    </div>
+
+    <!-- Include the JavaScript glue code. -->
+    <!-- This will load the WebAssembly module and run its main. --> 
+    <script src="region_detect_web.js"></script>
+    <script>
+    scanResult = { regions: {}, countries: {}, certain: true};
+   
+    function registerFailure() {
+        scanResult.failure = true;
+    }
+    
+    function registerUncertainty() {
+        scanResult.certain = false;
+    }
+    
+    function registerRegionCode(code) {
+        var char = String.fromCharCode(code - 1 + 65);
+        scanResult.regions[char] = true;
+    }
+
+    function registerCountryCode(value) {
+        var code = String.fromCharCode((value >> 8) & 0xFF) + String.fromCharCode(value & 0xFF);
+        scanResult.countries[code] = true;
+    }
+    
+    function reset() {
+        var regionOutput = document.getElementById('region');
+        var countryOutput = document.getElementById('country');
+        var verdictOutput = document.getElementById('verdict');
+        regionOutput.innerHTML = countryOutput.innerHTML = verdictOutput.innerHTML = '';
+        regionOutput.className = countryOutput.className = verdictOutput.className = 'green';
+        
+        document.getElementById('output').className = 'hidden';
+        document.getElementById('drop').className = '';
+    }
+    
+    function render() {
+        var regionOutput = document.getElementById('region');
+        var countryOutput = document.getElementById('country');
+        var verdictOutput = document.getElementById('verdict');
+        regionOutput.innerHTML = countryOutput.innerHTML = verdictOutput.innerHTML = '';
+        regionOutput.className = countryOutput.className = 'green';
+        document.getElementById('output').className = '';
+        
+        var regions = Object.keys(scanResult.regions);
+        var countries = Object.keys(scanResult.countries);
+        var verdict = "";
+        var verdictClass = "";
+        if(!scanResult.certain) {
+            verdictClass = "gray";
+            verdict = "Uncertain :-/";
+        } else if(scanResult.failure) {
+            verdictClass = "red";
+            verdict = "Invalid file!";
+        } else if(regions.length === 0) {
+            if(countries.length === 0) {
+                var verdictClass = "green";
+                verdict = "Region free";
+            } else {
+                verdictClass = "yellow";
+                verdict = "Geo-locked";
+            }
+        } else if(countries.length === 0) {
+            verdictClass = "yellow";
+            verdict = "Region locked";
+        } else {
+            verdictClass = "red";
+            verdict = "Locked";
+        }
+        verdictOutput.innerHTML = verdict;
+        verdictOutput.className = verdictClass;
+        
+        if(regions.length !== 0) {
+            regionOutput.className = 'yellow';
+            regionOutput.innerHTML += "<p class=\"region-code\">" + regions.join(' | ') + "</p>";
+        } else {
+            regionOutput.innerHTML += "<p class=\"region-code\">none</p>";
+        }
+        
+        if(countries.length !== 0) {
+            countryOutput.className = 'yellow';
+            countryOutput.innerHTML += "<p class=\"region-code\">" + countries.join(', ') + "</p>";
+        } else {
+            countryOutput.innerHTML += "<p class=\"region-code\">none</p>";
+        }
+    }
+    
+    function processFile(file) {
+        scanResult = { regions: {}, countries: {}, certain: true};
+        document.getElementById('drop').className = 'hidden';
+        var reader = new FileReader();
+        reader.onload = function(event) {
+            var result = event.target.result;
+
+            var buf = Module._malloc(result.byteLength);
+            var destination = new Uint8Array(Module.buffer, buf, result.byteLength);
+            destination.set(new Uint8Array(result));
+            
+            var result = Module.ccall(
+                'analyze_movie_objects',
+                'number',
+                ['number', 'number'],
+                [buf, result.byteLength]);
+            Module._free(buf);
+            
+            render();
+        }
+        document.getElementById('filein').value = '';
+        reader.readAsArrayBuffer(file);
+    }
+    
+    function fileHover(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if(e.target.id === 'drop') {
+            e.target.className = (e.type === "dragover" ? "hover" : "");
+        }
+    }
+    
+    function fileDrop(e) {
+        fileHover(e);
+        var files = e.target.files || e.dataTransfer.files;
+        console.log(e.target.files,  e.dataTransfer.files);
+        processFile(files[0]);
+    }
+    
+    (function() {
+        document.addEventListener("dragover", fileHover, false);
+        document.addEventListener("dragleave", fileHover, false);
+        document.addEventListener("drop", fileDrop, false);
+    })();
+    </script>
+
+  </body>
+</html> 
