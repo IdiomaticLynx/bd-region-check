@@ -40,7 +40,7 @@ I am not a lawyer, but I highly doubt the working of this tool could get anyone 
 
 
 # Can I get a copy of the source?
-Sure, here's a lynx [https://github.com/IdiomaticLynx/bd-region-check]
+Sure, here's a lynx [https://github.com/IdiomaticLynx/bd-region-check](https://github.com/IdiomaticLynx/bd-region-check)
 
 The code is based on a heavily modifed [libbluary](https://www.videolan.org/developers/libbluray.html) and therefore falls under the GPLv2.1 or later license
 If you decide to use this code in any manner, there's no need to credit me, but do credit the libbluray developers.
