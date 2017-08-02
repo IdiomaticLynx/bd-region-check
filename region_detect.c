@@ -26,8 +26,42 @@
 #include <stdio.h>
 #include <string.h>
 
-static int _scan_objects(MOBJ_OBJECTS *objects, REGISTER_ACCESS output[], size_t max_results)
-{
+static int backward_seek_comparison(MOBJ_OBJECT* obj, int reg, int pc, int i) {
+    while(pc > 0 && i-- > 0) {
+        pc--;
+        MOBJ_CMD *cmd = &obj->cmds[pc];
+
+        if(cmd->insn.grp == 2 /* Set */) {
+            if(!cmd->insn.imm_op1 && !(cmd->dst & 0x80000000) && (cmd->dst & 0xfff) == reg) {
+                return cmd->insn.imm_op2 ? cmd->src : -1;
+            }
+            if(!cmd->insn.imm_op2 && !(cmd->src & 0x80000000) && (cmd->src & 0xfff) == reg) {
+                return cmd->insn.imm_op1 ? cmd->dst : -1;
+            }
+        }
+    }
+    return -1;
+}
+
+
+static int forward_seek_comparison(MOBJ_OBJECT* obj, int reg, int pc, int i) {
+    while(pc < obj->num_cmds && i-- > 0) {
+        pc++;
+        MOBJ_CMD *cmd = &obj->cmds[pc];
+
+        if(cmd->insn.grp == 1 /* Compare */) {
+            if(!cmd->insn.imm_op1 && !(cmd->dst & 0x80000000) && (cmd->dst & 0xfff) == reg) {
+                return cmd->insn.imm_op2 ? cmd->src : backward_seek_comparison(obj, cmd->src & 0xfff, pc, 5);
+            }
+            if(!cmd->insn.imm_op2 && !(cmd->src & 0x80000000) && (cmd->src & 0xfff) == reg) {
+                return cmd->insn.imm_op1 ? cmd->dst : backward_seek_comparison(obj, cmd->dst & 0xfff, pc, 5);
+            }
+        }
+    }
+    return -1;
+}
+
+static int _scan_objects(MOBJ_OBJECTS *objects, REGISTER_ACCESS output[], size_t max_results) {
     int c = 0;
     
     for(int o = 0; o < objects->num_objects; o++) {
@@ -43,31 +77,46 @@ static int _scan_objects(MOBJ_OBJECTS *objects, REGISTER_ACCESS output[], size_t
                 continue;
             }
 
-            if(!cmd->insn.imm_op1) {
-                if(cmd->dst & 0x80000000) {
-                    int psr = cmd->dst & 0x7f;
-                    if(psr == 19) {
-                        // Country check
-                        output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, COMPARISON, cmd->src};
-                    } else if(psr == 20) {
-                        // Region check
-                        output[c++] = (REGISTER_ACCESS) {REGION_CODE, COMPARISON, cmd->src};
+            switch(cmd->insn.grp) {
+                case 0: /* Branch */
+                    break;
+                case 1: /* Compare */
+                    // Left-hand side is a PSR
+                    if(!cmd->insn.imm_op1 && (cmd->dst & 0x80000000)) {
+                        int psr = cmd->dst & 0x7f;
+                        int value = cmd->insn.imm_op2 ? cmd->src : -1;
+                        if(psr == 19 /* Country */) {
+                            output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, COMPARISON, value};
+                        } else if(psr == 20 /* Region */) {
+                            output[c++] = (REGISTER_ACCESS) {REGION_CODE, COMPARISON, value};
+                        }
                     }
-                }
-            }
+                    // Right-hand side is a PSR
+                    if(!cmd->insn.imm_op2 && (cmd->src & 0x80000000)) {
+                        int psr = cmd->src & 0x7f;
+                        int value = cmd->insn.imm_op1 ? cmd->dst : -1;
+                        if(psr == 19 /* Country */) {
+                            output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, COMPARISON, value};
+                        } else if(psr == 20 /* Region */) {
+                            output[c++] = (REGISTER_ACCESS) {REGION_CODE, COMPARISON, value};
+                        }
+                    }
+                    break;
+                case 2: /* Set */
+                    // Source is a PSR
+                    if(!cmd->insn.imm_op2 && (cmd->src & 0x80000000)) {
+                        int psr = cmd->src & 0x7f;
+                        int reg = cmd->dst & 0xfff;
 
-            if(!cmd->insn.imm_op2) {
-                if(cmd->src & 0x80000000) {
-                    int psr = cmd->src & 0x7f;
-                    if(psr == 19) {
-                        // Country check
-                        int country = obj->cmds[pc + 2].src;
-                        output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, ASSIGNMENT, country};
-                    } else if(psr == 20) {
-                        // Region check
-                        output[c++] = (REGISTER_ACCESS) {REGION_CODE, ASSIGNMENT, -1};
+                        if(psr == 19 /* Country */) {
+                            int value = forward_seek_comparison(obj, reg, pc, 5);
+                            output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, ASSIGNMENT, value};
+                        } else if(psr == 20 /* Region */) {
+                            int value = forward_seek_comparison(obj, reg, pc, 5);
+                            output[c++] = (REGISTER_ACCESS) {REGION_CODE, ASSIGNMENT, value};
+                        }
                     }
-                }
+                    break;
             }
         }
     }
