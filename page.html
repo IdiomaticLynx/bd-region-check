@@ -144,11 +144,21 @@
     }
     
     function registerRegionCode(code) {
-        var char = String.fromCharCode(code - 1 + 65);
+        if(code === -1) {
+            scanResult.certain = false;
+            scanResult.regions['Uncertain'] = true;
+            return;
+        }
+        var char = ['ERROR', 'A', 'B', 'ERROR', 'C'][code];
         scanResult.regions[char] = true;
     }
 
     function registerCountryCode(value) {
+        if(value === -1) {
+            scanResult.certain = false;
+            scanResult.countries['Uncertain'] = true;
+            return;
+        }
         var code = String.fromCharCode((value >> 8) & 0xFF) + String.fromCharCode(value & 0xFF);
         scanResult.countries[code] = true;
     }
@@ -202,7 +212,7 @@
         
         if(regions.length !== 0) {
             regionOutput.className = 'yellow';
-            regionOutput.innerHTML += "<p class=\"region-code\">" + regions.join(' | ') + "</p>";
+            regionOutput.innerHTML += "<p class=\"region-code\">" + regions.join(', ') + "</p>";
         } else {
             regionOutput.innerHTML += "<p class=\"region-code\">none</p>";
         }
