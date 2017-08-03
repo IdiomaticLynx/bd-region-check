@@ -26,12 +26,12 @@ int EMSCRIPTEN_KEEPALIVE analyze_movie_objects(char* buffer, uint64_t size) {
             }, 0);
         } else if(result[i].reg == REGION_CODE) {
             EM_ASM_({
-                registerRegionCode($0);
-            }, result[i].value);
+                registerRegionCode($0, $1, $2);
+            }, result[i].obj_index, result[i].pc, result[i].value);
         } else {
             EM_ASM_({
-                registerCountryCode($0);
-            }, result[i].value);
+                registerCountryCode($0, $1, $2);
+            }, result[i].obj_index, result[i].pc, result[i].value);
         }
     }
     return c;

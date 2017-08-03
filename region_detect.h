@@ -18,6 +18,8 @@ typedef enum {
 typedef struct register_access_s REGISTER_ACCESS;
 struct register_access_s
 {
+    uint32_t obj_index;
+    uint32_t pc;
     register_type reg;
     register_usage_type usage;
     uint32_t value;

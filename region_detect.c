@@ -86,9 +86,9 @@ static int _scan_objects(MOBJ_OBJECTS *objects, REGISTER_ACCESS output[], size_t
                         int psr = cmd->dst & 0x7f;
                         int value = cmd->insn.imm_op2 ? cmd->src : -1;
                         if(psr == 19 /* Country */) {
-                            output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, COMPARISON, value};
+                            output[c++] = (REGISTER_ACCESS) {o, pc, COUNTRY_CODE, COMPARISON, value};
                         } else if(psr == 20 /* Region */) {
-                            output[c++] = (REGISTER_ACCESS) {REGION_CODE, COMPARISON, value};
+                            output[c++] = (REGISTER_ACCESS) {o, pc, REGION_CODE, COMPARISON, value};
                         }
                     }
                     // Right-hand side is a PSR
@@ -96,9 +96,9 @@ static int _scan_objects(MOBJ_OBJECTS *objects, REGISTER_ACCESS output[], size_t
                         int psr = cmd->src & 0x7f;
                         int value = cmd->insn.imm_op1 ? cmd->dst : -1;
                         if(psr == 19 /* Country */) {
-                            output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, COMPARISON, value};
+                            output[c++] = (REGISTER_ACCESS) {o, pc, COUNTRY_CODE, COMPARISON, value};
                         } else if(psr == 20 /* Region */) {
-                            output[c++] = (REGISTER_ACCESS) {REGION_CODE, COMPARISON, value};
+                            output[c++] = (REGISTER_ACCESS) {o, pc, REGION_CODE, COMPARISON, value};
                         }
                     }
                     break;
@@ -110,10 +110,10 @@ static int _scan_objects(MOBJ_OBJECTS *objects, REGISTER_ACCESS output[], size_t
 
                         if(psr == 19 /* Country */) {
                             int value = forward_seek_comparison(obj, reg, pc, 5);
-                            output[c++] = (REGISTER_ACCESS) {COUNTRY_CODE, ASSIGNMENT, value};
+                            output[c++] = (REGISTER_ACCESS) {o, pc, COUNTRY_CODE, ASSIGNMENT, value};
                         } else if(psr == 20 /* Region */) {
                             int value = forward_seek_comparison(obj, reg, pc, 5);
-                            output[c++] = (REGISTER_ACCESS) {REGION_CODE, ASSIGNMENT, value};
+                            output[c++] = (REGISTER_ACCESS) {o, pc, REGION_CODE, ASSIGNMENT, value};
                         }
                     }
                     break;

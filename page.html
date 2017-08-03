@@ -93,6 +93,9 @@
         #faq a {
             color: #233237;
         }
+        #listing {
+            font-family: monospace;
+        }
     </style>
   </head>
   <body>
@@ -125,6 +128,8 @@
             </div>
         </div>
     </div>
+    <div id="listing">
+    </div>
     <div id="faq">
         <a href="faq.html">Frequently Asked Questions</a>
     </div>
@@ -133,7 +138,7 @@
     <!-- This will load the WebAssembly module and run its main. --> 
     <script src="region_detect_web.js"></script>
     <script>
-    scanResult = { regions: {}, countries: {}, certain: true};
+    scanResult = { regions: {}, countries: {}, certain: true, list: []};
    
     function registerFailure() {
         scanResult.failure = true;
@@ -143,7 +148,8 @@
         scanResult.certain = false;
     }
     
-    function registerRegionCode(code) {
+    function registerRegionCode(obj, pc, code) {
+        scanResult.list.push({obj: obj, pc: pc, type: 'region', value: code});
         if(code === -1) {
             scanResult.certain = false;
             scanResult.regions['Uncertain'] = true;
@@ -153,7 +159,8 @@
         scanResult.regions[char] = true;
     }
 
-    function registerCountryCode(value) {
+    function registerCountryCode(obj, pc, value) {
+        scanResult.list.push({obj: obj, pc: pc, type: 'country', value: value});
         if(value === -1) {
             scanResult.certain = false;
             scanResult.countries['Uncertain'] = true;
@@ -187,7 +194,7 @@
         var verdict = "";
         var verdictClass = "";
         if(!scanResult.certain) {
-            verdictClass = "gray";
+            verdictClass = "yellow";
             verdict = "Uncertain :-/";
         } else if(scanResult.failure) {
             verdictClass = "red";
@@ -223,10 +230,30 @@
         } else {
             countryOutput.innerHTML += "<p class=\"region-code\">none</p>";
         }
+
+        var listingOutput = document.getElementById('listing');
+        listingOutput.innerHTML = '';
+        for(var elem of scanResult.list) {
+            var isRegion = elem.type === 'region';
+            var value = '?';
+            if(elem.value !== -1) {
+                value = isRegion
+                    ? ['','A','B','','C'][elem.value]
+                    : String.fromCharCode((elem.value >> 8) & 0xFF) + String.fromCharCode(elem.value & 0xFF);
+            }
+            listingOutput.innerHTML +=
+                '<p>' +
+                'MovieObject #' + elem.obj + ' (line ' + (elem.pc + 1) + ')' +
+                ': ' +
+                (isRegion ? 'region' : 'country') +
+                ' - ' +
+                value +
+                '</p>';
+        }
     }
     
     function processFile(file) {
-        scanResult = { regions: {}, countries: {}, certain: true};
+        scanResult = { regions: {}, countries: {}, certain: true, list: []};
         document.getElementById('drop').className = 'hidden';
         var reader = new FileReader();
         reader.onload = function(event) {
